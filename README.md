@@ -8,6 +8,7 @@ _(Replace this placeholder with a screenshot of your app later!)_
 ---
 
 ## 📌 About The Project
+------------------------
 
 FocusFlow is more than just a to-do list; it's a comprehensive visual workspace designed to bring clarity, motivation, and seamless collaboration to your personal and professional projects. In a world of digital distractions, FocusFlow helps users regain control by combining an intuitive Kanban-style workflow with powerful planning tools and motivational features.
 
@@ -16,6 +17,7 @@ This application is built as a modern Single-Page Application (SPA) to ensure a 
 The core purpose of FocusFlow is to make productivity feel less like a chore and more like an engaging, rewarding process.
 
 ### ✨ Key Features
+----------------------------
 
 🧩 **Dynamic Task & Project Management**
 
@@ -46,6 +48,7 @@ The core purpose of FocusFlow is to make productivity feel less like a chore and
 - **Task Assignments & Comments:** Assign tasks to others, leave comments, and use @mentions to communicate directly within the context of a task.
 
 ### 🛠️ Built With
+------------------------------------
 
 This project showcases a modern full-stack architecture:
 
@@ -69,6 +72,7 @@ This project showcases a modern full-stack architecture:
 
 
 ### 🧩 User Story: Creating & Managing Tasks on the Kanban Board
+----------------------------------------------------------------------
 
 **As a** logged-in user,  
 **I want to** create, edit, and manage tasks within a drag-and-drop Kanban board,  
