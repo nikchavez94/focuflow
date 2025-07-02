@@ -67,7 +67,8 @@ This project showcases a modern full-stack architecture:
   - [Git](https://git-scm.com/) & [GitHub](https://github.com/)
 
 
-  #### 🧩 User Story: Creating & Managing Tasks on the Kanban Board
+
+### 🧩 User Story: Creating & Managing Tasks on the Kanban Board
 
 **As a** logged-in user,  
 **I want to** create, edit, and manage tasks within a drag-and-drop Kanban board,  
