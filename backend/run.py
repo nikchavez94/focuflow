@@ -26,6 +26,20 @@ db = firestore.client()
 app = Flask(__name__)
 CORS(app)
 
+def check_project_ownership(project_id, uid):
+    """Checks if a user (uid) owns a specific project (project_id). Returns True or False."""
+    project_ref = db.collection('projects').document(project_id)
+    project_doc = project_ref.get()
+    if not project_doc.exists:
+        # The project doesn't even exist
+        return False
+    
+    project_data = project_doc.to_dict()
+    if project_data.get('ownerId') == uid:
+        # The ownerId on the project matches the user's ID
+        return True
+    
+    return False
 
 # --- Define API Routes ---
 
@@ -111,7 +125,144 @@ def protected_route():
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 # --- End of NEW ---
 
+# Endpoint to CREATE a new project
+@app.route('/api/projects', methods=['POST'])
+def create_project():
+    try:
+        # First, verify the user is authenticated
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({"error": "Authorization token required"}), 401
+        
+        id_token = auth_header.split(' ').pop()
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
 
+        # Get project data from the request
+        data = request.get_json()
+        project_name = data.get('name')
+        if not project_name:
+            return jsonify({"error": "Project name is required"}), 400
+
+        # Create the project document data
+        project_data = {
+            'name': project_name,
+            'ownerId': uid, # Link the project to the logged-in user
+            'createdAt': firestore.SERVER_TIMESTAMP
+        }
+
+        # Add the new project to the 'projects' collection in Firestore
+        projects_collection = db.collection('projects')
+        projects_collection.add(project_data)
+
+        return jsonify({"message": "Project created successfully"}), 201
+
+    except auth.InvalidIdTokenError:
+        return jsonify({"error": "Invalid token"}), 403
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+# Endpoint to GET all projects for the logged-in user
+@app.route('/api/projects', methods=['GET'])
+def get_projects():
+    try:
+        # Verify the user is authenticated
+        auth_header = request.headers.get('Authorization')
+        if not auth_header:
+            return jsonify({"error": "Authorization token required"}), 401
+        
+        id_token = auth_header.split(' ').pop()
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+
+        # Query the 'projects' collection for documents where 'ownerId' matches the user's uid
+        projects_collection = db.collection('projects')
+        user_projects_query = projects_collection.where('ownerId', '==', uid)
+        
+        projects = []
+        for doc in user_projects_query.stream():
+            project_data = doc.to_dict()
+            project_data['id'] = doc.id # Add the document ID to the data
+            projects.append(project_data)
+
+        return jsonify(projects), 200
+    
+    except auth.InvalidIdTokenError:
+        return jsonify({"error": "Invalid token"}), 403
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+# Endpoint to GET all tasks for a specific project
+@app.route('/api/projects/<project_id>/tasks', methods=['GET'])
+def get_tasks_for_project(project_id):
+    try:
+        # First, verify the user is authenticated
+        auth_header = request.headers.get('Authorization')
+        id_token = auth_header.split(' ').pop()
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+
+        
+        if not check_project_ownership(project_id, uid):
+            return jsonify({"error": "User does not have access to this project"}), 403 
+
+        # Query the 'tasks' collection for tasks matching the project_id
+        tasks_collection = db.collection('tasks')
+        project_tasks_query = tasks_collection.where('projectId', '==', project_id)
+        
+        tasks = []
+        for doc in project_tasks_query.stream():
+            task_data = doc.to_dict()
+            task_data['id'] = doc.id
+            tasks.append(task_data)
+        
+        return jsonify(tasks), 200
+
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
+
+# Endpoint to CREATE a new task in a specific project
+@app.route('/api/projects/<project_id>/tasks', methods=['POST'])
+def create_task_for_project(project_id):
+    try:
+        # Verify user authentication
+        auth_header = request.headers.get('Authorization')
+        id_token = auth_header.split(' ').pop()
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+        
+        # --- COMPLETE THE TODO ---
+        if not check_project_ownership(project_id, uid):
+            return jsonify({"error": "User does not have access to this project"}), 403 # 403 Forbidden
+        # --------------------------
+
+        # Get task data from the request body
+        data = request.get_json()
+        title = data.get('title')
+        if not title:
+            return jsonify({"error": "Task title is required"}), 400
+
+        # Create the task data, linking it to the project
+        task_data = {
+            'title': title,
+            'description': data.get('description', ''),
+            'status': data.get('status', 'todo'),
+            'priority': data.get('priority', 'medium'),
+            'dueDate': data.get('dueDate', None),
+            'projectId': project_id,
+            'ownerId': uid,
+            'createdAt': firestore.SERVER_TIMESTAMP
+        }
+
+        tasks_collection = db.collection('tasks')
+        tasks_collection.add(task_data)
+        
+        return jsonify({"message": "Task created successfully"}), 201
+
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+    
 # This block ensures the server only runs when the script is executed directly
 if __name__ == '__main__':
     port = int(os.environ.get('FLASK_RUN_PORT', 5001))
