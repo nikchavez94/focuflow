@@ -246,13 +246,16 @@ def create_task_for_project(project_id):
         # Create the task data, linking it to the project
         task_data = {
             'title': title,
+            # Get the new fields from the request, providing defaults
             'description': data.get('description', ''),
             'status': data.get('status', 'todo'),
-            'priority': data.get('priority', 'medium'),
-            'dueDate': data.get('dueDate', None),
+            'priority': data.get('priority', 'medium'), # 'low', 'medium', 'high'
+            'tags': data.get('tags', []), # Expects an array of strings
+            'dueDate': data.get('dueDate', None), # Expects a string like "Jan 27"
             'projectId': project_id,
             'ownerId': uid,
-            'createdAt': firestore.SERVER_TIMESTAMP
+            'createdAt': firestore.SERVER_TIMESTAMP,
+            'order': firestore.SERVER_TIMESTAMP 
         }
 
         tasks_collection = db.collection('tasks')
@@ -263,6 +266,62 @@ def create_task_for_project(project_id):
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
     
+    
+@app.route('/api/tasks/<task_id>', methods=['PUT'])
+def update_task(task_id):
+    try:
+        # Verify user authentication
+        auth_header = request.headers.get('Authorization')
+        id_token = auth_header.split(' ').pop()
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+
+        # Get the task document from Firestore
+        task_ref = db.collection('tasks').document(task_id)
+        task_doc = task_ref.get()
+
+        if not task_doc.exists:
+            return jsonify({"error": "Task not found"}), 404
+
+        # Verify the user owns this task before allowing an update
+        if task_doc.to_dict().get('ownerId') != uid:
+            return jsonify({"error": "User does not have permission to update this task"}), 403
+
+        # Get the update data from the request body (e.g., {'status': 'inprogress'})
+        data = request.get_json()
+
+        # Update the task document in Firestore with the new data
+        task_ref.update(data)
+
+        return jsonify({"message": "Task updated successfully"}), 200
+
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+    
+@app.route('/api/tasks/all', methods=['GET'])
+def get_all_user_tasks():
+    try:
+        # Verify user authentication
+        auth_header = request.headers.get('Authorization')
+        id_token = auth_header.split(' ').pop()
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+
+        # Query the 'tasks' collection for all documents where 'ownerId' matches the user's uid
+        tasks_collection = db.collection('tasks')
+        user_tasks_query = tasks_collection.where('ownerId', '==', uid)
+        
+        tasks = []
+        for doc in user_tasks_query.stream():
+            task_data = doc.to_dict()
+            task_data['id'] = doc.id
+            tasks.append(task_data)
+
+        return jsonify(tasks), 200
+    
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
+
 # This block ensures the server only runs when the script is executed directly
 if __name__ == '__main__':
     port = int(os.environ.get('FLASK_RUN_PORT', 5001))
