@@ -1,0 +1,36 @@
+/* focuflow/frontend/src/pages/KanbanPage.css */
+
+.kanban-board {
+  display: flex;
+  justify-content: space-around;
+  gap: 20px;
+  padding: 20px;
+}
+
+.kanban-column {
+  /* We will style this more with Tailwind, but this is a good base */
+  background-color: #ffffff; /* A light grey fallback */
+  border-radius: 8px;
+  width: 300px;
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-column h2 {
+  font-size: 1.2rem;
+  padding: 0 10px;
+  margin-bottom: 15px;
+}
+
+.tasks-container {
+  flex-grow: 1;
+  min-height: 100px; /* Ensures drop area is available even when empty */
+  padding: 2px; /* Add a little padding for the cards */
+}
+
+/* The TaskCard itself is now styled with Tailwind, 
+   but we can keep this class name for structure if needed. */
+.task-card {
+  margin-bottom: 20px;
+}
